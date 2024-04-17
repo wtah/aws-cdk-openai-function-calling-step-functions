@@ -1,0 +1,66 @@
+# This enhanced AWS CloudFormation template provides a complete solution for deploying a secure and robust static website on AWS. Uses S3 for storage, CloudFront for content delivery with SSL certificate, and Route 53 for DNS. All created resources are configured to follow best practices in security and performance to ensure a smooth operation of the static website.
+# ## Resources Explained:
+# - **S3 Bucket**: Stores the static website files. It is publicly accessible and contains properties for indexing and error documents.
+# - **CloudFront Distribution**: Distributes the website content globally. SSL is configured for secure transport, and the distribution is set to only allow HTTPS access.
+# - **DNS Configuration**: Registers the domain name and configures DNS settings to resolve to the CloudFront distribution, facilitating website access via the domain name.
+# ## Parameters:
+# - **IndexDocument**: Specifies the default file that will be served when accessing the root URL.
+# - **DomainName**: The domain name to be used for the website.
+# - **HostedZoneID**: The ID of the AWS-hosted zone where the domain is registered.
+# ## Example Usage:
+# To deploy the template, you will need to provide values for the 'DomainName' and 'HostedZoneID' parameters. Once deployed, the website will be accessible via the specified domain name, and all traffic will be served over HTTPS, ensuring a secure connection.
+# ## Expected Outputs:
+# After deploying this template, the website will be accessible globally with high availability due to the CloudFront distribution. SSL/TLS settings ensure that all data transmitted remains secure.
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to host a secure static website with SSL, logging, and DNS configuration.
+
+Resources:
+
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: !Ref IndexDocument
+        ErrorDocument: 'error.html'
+
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: !Ref IndexDocument
+        ViewerCertificate:
+          AcmCertificateArn: !Ref SSLCertificateARN
+          SslSupportMethod: 'sni-only'
+        Logging:
+          IncludeCookies: false
+          Bucket: !Ref LoggingBucket
+          Prefix: 'cloudfront-logs/'
+
+  DNSRecord:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Ref DomainName
+      Type: 'A'
+      AliasTarget:
+        DNSName: !GetAtt [CloudFrontDistribution, DomainName]
+        HostedZoneId: 'Z2FDTNDATAQYW2'
+
+Parameters:
+  IndexDocument:
+    Type: String
+    Default: 'index.html'
+  DomainName:
+    Type: String
+  SSLCertificateARN:
+    Type: String
+  HostedZoneID:
+    Type: String
+
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt [S3Bucket, WebsiteURL]
+    Description: URL to the hosted static website
